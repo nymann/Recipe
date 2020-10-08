@@ -25,7 +25,17 @@ namespace Recipe
                 }
             };
 
+            Settings.Hotkey.OnValueChanged += () => { Input.RegisterKey(Settings.Hotkey); };
+
             return true;
+        }
+
+        public override void Render()
+        {
+            if (Settings.Hotkey.PressedOnce())
+            {
+                DebugWindow.LogMsg($"{Name}: Hotkey pressed.");
+            }
         }
     }
 }
