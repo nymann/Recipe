@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -88,7 +89,7 @@ namespace Recipe
                 DebugWindow.LogMsg("Getting item from stash", 5, Color.Green);
                 var constant = Settings.TwoSetsAtOnce.Value ? 2 : 1;
                 yield return SwitchToTabAndGrab(Settings.BodyArmor.Value, constant);
-                yield return SwitchToTabAndGrab(Settings.Weapons.Value, 2 * constant);
+                yield return SwitchToTabAndGrab(Settings.Weapons.Value, 2 * constant, true);
                 yield return SwitchToTabAndGrab(Settings.Helmets.Value, constant);
                 yield return SwitchToTabAndGrab(Settings.Gloves.Value, constant);
                 yield return SwitchToTabAndGrab(Settings.Belts.Value, constant);
@@ -111,7 +112,7 @@ namespace Recipe
             _debugTimer.Stop();
         }
 
-        private IEnumerator SwitchToTabAndGrab(int tabIndex, int grabCount = 1)
+        private IEnumerator SwitchToTabAndGrab(int tabIndex, int grabCount = 1, bool isWeapon = false)
         {
             yield return Delay(5);
             yield return SwitchToTabViaDropdownMenu(tabIndex);
@@ -124,7 +125,14 @@ namespace Recipe
                 yield return Delay(20);
             }
 
-            yield return GrabRandomItemFromVisibleStash(grabCount);
+            if (isWeapon)
+            {
+                yield return GetWeaponsFromStash();
+            }
+            else
+            {
+                yield return GrabRandomItemFromVisibleStash(grabCount);
+            }
         }
 
         private IEnumerator GrabRandomItemFromVisibleStash(int grabCount = 1)
@@ -148,6 +156,64 @@ namespace Recipe
 
             Input.KeyUp(Keys.LControlKey);
         }
+
+        private IEnumerator GetWeaponsFromStash()
+        {
+            var visibleStash = GameController.IngameState.IngameUi.StashElement.VisibleStash;
+            var visibleInventoryItems = visibleStash?.VisibleInventoryItems;
+            var setsToGrab = Settings.TwoSetsAtOnce.Value ? 2 : 1;
+            var items = GetBowFromInventory(visibleInventoryItems, setsToGrab);
+            if (items.Count != setsToGrab)
+            {
+                var numberOfOneHandsToGrab = (setsToGrab - items.Count) * 2;
+                var oneHandedWeapons = GetOneHandFromInventory(visibleInventoryItems, numberOfOneHandsToGrab);
+                if (oneHandedWeapons.Count != numberOfOneHandsToGrab)
+                {
+                    DebugWindow.LogMsg("Not enough weapons to fulfill this request.");
+                    yield break;
+                }
+                items.AddRange(oneHandedWeapons);
+            }
+            
+
+            foreach (var visibleInventoryItem in items)
+            {
+                Input.KeyDown(Keys.LControlKey);
+                yield return Delay(10);
+                yield return ClickElement(visibleInventoryItem.GetClientRect().Center);
+            }
+
+            Input.KeyUp(Keys.LControlKey);
+        }
+
+        private List<NormalInventoryItem> GetBowFromInventory(IEnumerable<NormalInventoryItem> inventoryItems, int count = 1)
+        {
+            var a = new List<NormalInventoryItem>();
+            foreach (var x in inventoryItems)
+            {
+                if (GameController.Game.Files.BaseItemTypes.Translate(x.Item.Path).ClassName != "Bow") continue;
+
+                a.Add(x);
+                if (a.Count == count) return a;
+            }
+
+            return a;
+        }
+
+        private List<NormalInventoryItem> GetOneHandFromInventory(IEnumerable<NormalInventoryItem> inventoryItems, int count = 2)
+        {
+            var a = new List<NormalInventoryItem>();
+            foreach (var x in inventoryItems)
+            {
+                if (x.ItemWidth != 1 || x.ItemHeight != 3) continue;
+
+                a.Add(x);
+                if (a.Count == count) return a;
+            }
+
+            return a;
+        }
+
 
         private bool DropDownMenuIsVisible()
         {
@@ -291,7 +357,8 @@ namespace Recipe
             }
 
             var itemName = GameController.Files.BaseItemTypes.Translate(item.Path).BaseName;
-            return itemName == "Chaos Orb" && item.GetComponent<Stack>().Size % 2 == 0;
+            var constant = Settings.TwoSetsAtOnce.Value ? 2 : 1;
+            return itemName == "Chaos Orb" && item.GetComponent<Stack>().Size == constant * 2;
         }
     }
 }
