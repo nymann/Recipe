@@ -1,15 +1,17 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
 using ExileCore;
-using ExileCore.PoEMemory;
+using ExileCore.PoEMemory.Components;
+using ExileCore.PoEMemory.Elements.InventoryElements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
+using Stack = ExileCore.PoEMemory.Components.Stack;
 
 namespace Recipe
 {
@@ -72,19 +74,22 @@ namespace Recipe
                     }
                 }
             }
-            return null;
-            /*//not sure if that is even needed
-            if (!uiTabsOpened && _coroutineWorker != null && !_coroutineWorker.IsDone)
+
+            /*
+            var uiTabsOpened = GameController.Game.IngameState.IngameUi.InventoryPanel.IsVisible &&
+                               GameController.Game.IngameState.IngameUi.StashElement.IsVisibleLocal;*/
+
+            /*if (!uiTabsOpened && _coroutineWorker != null && !_coroutineWorker.IsDone)
             {
                 _coroutineWorker = ExileCore.Core.ParallelRunner.FindByName(CoroutineName);
                 _coroutineWorker?.Done();
             }*/
-            /* //put the error handling responsebility to the error causing codepart
             if (_coroutineWorker != null && _coroutineWorker.Running && _debugTimer.ElapsedMilliseconds > 15000)
             {
                 _coroutineWorker?.Done();
                 _debugTimer.Restart();
                 _debugTimer.Stop();
+                Input.KeyUp(Keys.LControlKey);
             }
             */
         }
@@ -109,14 +114,13 @@ namespace Recipe
             _debugTimer.Restart();
             var uiTabsOpened = GameController.Game.IngameState.IngameUi.InventoryPanel.IsVisible &&
                                GameController.Game.IngameState.IngameUi.StashElement.IsVisibleLocal;
-            Input.KeyDown(Keys.LControlKey);
             if (uiTabsOpened)
             {
                 DebugWindow.LogMsg("Getting item from stash", 5, Color.Green);
                 var twoSets = Settings.TwoSetsAtOnce.Value ? 2 : 1;
                 yield return new WaitTime(5  +Settings.ExtraDelay);   //if i have to check what the delay function even does, the code is not more readable imo
                 yield return SwitchToTabAndGrab(Settings.BodyArmor.Value, twoSets);
-                yield return SwitchToTabAndGrab(Settings.Weapons.Value, 2 * twoSets);
+                yield return SwitchToTabAndGrab(Settings.Weapons.Value, 2 * twoSets, true);
                 yield return SwitchToTabAndGrab(Settings.Helmets.Value, twoSets);
                 yield return SwitchToTabAndGrab(Settings.Gloves.Value, twoSets);
                 yield return SwitchToTabAndGrab(Settings.Boots.Value, twoSets);
@@ -129,18 +133,36 @@ namespace Recipe
                 yield return SellSetToVendor();
             }
 
-            _coroutineWorker = Core.ParallelRunner.FindByName(CoroutineName);
+            yield return Delay(30);
+
+            _coroutineWorker = ExileCore.Core.ParallelRunner.FindByName(CoroutineName);
             _coroutineWorker?.Done();
             Input.KeyUp(Keys.LControlKey);
             _debugTimer.Restart();
             _debugTimer.Stop();
         }
 
-        private IEnumerator SwitchToTabAndGrab(int tabIndex, int grabCount = 1)
+        private IEnumerator SwitchToTabAndGrab(int tabIndex, int grabCount = 1, bool isWeapon = false)
         {
+            yield return Delay(5);
             yield return SwitchToTabViaDropdownMenu(tabIndex);
             yield return Delay(5);
-            yield return GrabRandomItemFromVisibleStash(grabCount);
+            var visibleStash = GameController.IngameState.IngameUi.StashElement.VisibleStash.Address;
+            var stash = GameController.IngameState.IngameUi.StashElement.GetStashInventoryByIndex(tabIndex).Address;
+            if (visibleStash != stash)
+            {
+                DebugWindow.LogMsg("Stash was not the requested.");
+                yield return Delay(20);
+            }
+
+            if (isWeapon)
+            {
+                yield return GetWeaponsFromStash();
+            }
+            else
+            {
+                yield return GrabRandomItemFromVisibleStash(grabCount);
+            }
         }
 
         private IEnumerator GrabRandomItemFromVisibleStash(int grabCount = 1)
@@ -150,15 +172,78 @@ namespace Recipe
             for (var i = 0; i < grabCount; i++)
             {
                 var visibleInventoryItem = visibleInventoryItems?[i];
+                Input.KeyDown(Keys.LControlKey);
                 yield return Delay(10);
                 if (visibleInventoryItem == null)
                 {
+                    DebugWindow.LogMsg("Visible inventory item was null. This should not happen.");
+                    Input.KeyUp(Keys.LControlKey);
                     yield break;
                 }
 
                 yield return ClickElement(visibleInventoryItem.GetClientRect().Center);
             }
+
+            Input.KeyUp(Keys.LControlKey);
         }
+
+        private IEnumerator GetWeaponsFromStash()
+        {
+            var visibleStash = GameController.IngameState.IngameUi.StashElement.VisibleStash;
+            var visibleInventoryItems = visibleStash?.VisibleInventoryItems;
+            var setsToGrab = Settings.TwoSetsAtOnce.Value ? 2 : 1;
+            var items = GetBowFromInventory(visibleInventoryItems, setsToGrab);
+            if (items.Count != setsToGrab)
+            {
+                var numberOfOneHandsToGrab = (setsToGrab - items.Count) * 2;
+                var oneHandedWeapons = GetOneHandFromInventory(visibleInventoryItems, numberOfOneHandsToGrab);
+                if (oneHandedWeapons.Count != numberOfOneHandsToGrab)
+                {
+                    DebugWindow.LogMsg("Not enough weapons to fulfill this request.");
+                    yield break;
+                }
+                items.AddRange(oneHandedWeapons);
+            }
+            
+
+            foreach (var visibleInventoryItem in items)
+            {
+                Input.KeyDown(Keys.LControlKey);
+                yield return Delay(10);
+                yield return ClickElement(visibleInventoryItem.GetClientRect().Center);
+            }
+
+            Input.KeyUp(Keys.LControlKey);
+        }
+
+        private List<NormalInventoryItem> GetBowFromInventory(IEnumerable<NormalInventoryItem> inventoryItems, int count = 1)
+        {
+            var a = new List<NormalInventoryItem>();
+            foreach (var x in inventoryItems)
+            {
+                if (GameController.Game.Files.BaseItemTypes.Translate(x.Item.Path).ClassName != "Bow") continue;
+
+                a.Add(x);
+                if (a.Count == count) return a;
+            }
+
+            return a;
+        }
+
+        private List<NormalInventoryItem> GetOneHandFromInventory(IEnumerable<NormalInventoryItem> inventoryItems, int count = 2)
+        {
+            var a = new List<NormalInventoryItem>();
+            foreach (var x in inventoryItems)
+            {
+                if (x.ItemWidth != 1 || x.ItemHeight != 3) continue;
+
+                a.Add(x);
+                if (a.Count == count) return a;
+            }
+
+            return a;
+        }
+
 
         private bool DropDownMenuIsVisible()
         {
@@ -238,7 +323,7 @@ namespace Recipe
             if (SliderPresent())
             {
                 var clicks = _stashCount - MaxShownSidebarStashTabs;
-                yield return Delay(3);
+                yield return Delay(10);
                 VerticalScroll(scrollUp: clickable, clicks: clicks);
                 yield return Delay(3);
             }
@@ -249,6 +334,7 @@ namespace Recipe
 
         private IEnumerator SwitchToTabViaDropdownMenu(int tabIndex)
         {
+            Input.KeyUp(Keys.LControlKey);
             if (!DropDownMenuIsVisible())
             {
                 yield return OpenDropDownMenu();
@@ -258,25 +344,51 @@ namespace Recipe
         }
 
 
-        public IEnumerator SellSetToVendor(int callCount = 1)
+        public IEnumerator SellSetToVendor()
         {
-            var npcTradingWindow = GameController.Game.IngameState.IngameUi.SellWindow;
+            var npcTradingWindow = GameController.Game.IngameState.IngameUi?.SellWindow;
 
             if (npcTradingWindow == null || !npcTradingWindow.IsVisible)
             {
                 DebugWindow.LogMsg("Error: npcTradingWindow is not visible (opened)!", 5);
                 yield break;
             }
-            var items = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;
-            DebugWindow.LogMsg($"There should be 9 items in inventory there are '{items.Count}'");
-            foreach (var normalInventoryItem in items)
+
+            var items = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory]
+                .VisibleInventoryItems.Where(x => x.Item.GetComponent<Mods>()?.ItemRarity == ItemRarity.Rare);
+            Input.KeyDown(Keys.LControlKey);
+            yield return Delay(3);
+            foreach (var item in items)
             {
-                DebugWindow.LogMsg("Clicking a normal inventory item.");
-                yield return Delay(20);
-                yield return ClickElement(normalInventoryItem.GetClientRect().Center);
-                yield return Delay(20);
+                yield return ClickElement(item.GetClientRect().Center);
             }
-            var playerOfferItems = npcTradingWindow.OtherOffer;
+
+            yield return Delay(3);
+            Input.KeyUp(Keys.LControlKey);
+
+
+            yield return Delay(50);
+            if (!VendorOfferUsChaos(npcTradingWindow))
+            {
+                yield break;
+            }
+
+            DebugWindow.LogMsg("Vendor is offering us Regal or Chaos, accept.");
+            yield return ClickElement(npcTradingWindow.AcceptButton.GetClientRect().Center);
+        }
+
+        public bool VendorOfferUsChaos(SellWindow npcTradingWindow)
+        {
+            var item = npcTradingWindow.OtherOffer.Children.Skip(1).FirstOrDefault()?.AsObject<NormalInventoryItem>()
+                .Item;
+            if (item == null)
+            {
+                return false;
+            }
+
+            var itemName = GameController.Files.BaseItemTypes.Translate(item.Path).BaseName;
+            var constant = Settings.TwoSetsAtOnce.Value ? 2 : 1;
+            return itemName == "Chaos Orb" && item.GetComponent<Stack>().Size == constant * 2;
         }
     }
 }
