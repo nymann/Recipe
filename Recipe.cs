@@ -1,24 +1,26 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
 using ExileCore;
-using ExileCore.PoEMemory.Elements.InventoryElements;
+using ExileCore.PoEMemory;
+using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
 
 namespace Recipe
 {
-    public class Recipe : BaseSettingsPlugin<Core.Config>
+    public class Recipe : BaseSettingsPlugin<Settings.Config>
     {
         const int MaxShownSidebarStashTabs = 31;
-        public int _stashCount = 45;
+        public int _stashCount;
         private const string CoroutineName = "Recipe Main Routine";
         private readonly Stopwatch _debugTimer = new Stopwatch();
         private Coroutine _coroutineWorker;
-
+        
         public Recipe()
         {
             Name = "Recipe";
@@ -32,6 +34,7 @@ namespace Recipe
                 {
                     // Setup
                     DebugWindow.LogMsg($"{Name}: enabled", 5);
+                    _stashCount = GameController.IngameState.IngameUi.StashElement.AllStashNames.Count;
                 }
                 else
                 {
@@ -39,38 +42,66 @@ namespace Recipe
                     DebugWindow.LogMsg($"{Name}: disabled", 5);
                 }
             };
-            Settings.Hotkey.OnValueChanged += () => { Input.RegisterKey(Settings.Hotkey); };
+            Settings.StartHotkey.OnValueChanged += () => { Input.RegisterKey(Settings.StartHotkey); };
 
             return true;
         }
-
-        public override void Render()
+        public override Job Tick()
         {
-            if (_coroutineWorker != null && _coroutineWorker.IsDone)
+            //test if anything can even happen right now
+            if (!CheckRequirements()) return null;
+            if (Settings.StartHotkey.PressedOnce())
             {
-                Input.KeyUp(Keys.LControlKey);
-                _coroutineWorker = null;
+                if(_coroutineWorker == null)
+                {
+                    _coroutineWorker = new Coroutine(ChaosRecipe(), this, "ChaosRecipe");
+                    Core.ParallelRunner.Run(_coroutineWorker);
+                }
+                else 
+                {
+                    //if a Procedure(chaos recipe) is already running and the hotkey is pressed before finished, Pause the procedure. "Im not sure if this works but will try, probably needs more to work like that"
+                    if (_coroutineWorker.Running) 
+                    {
+                        _coroutineWorker.Pause();
+                        Input.KeyUp(Keys.LControlKey); //must find better place for this
+                    }
+                    else
+                    {
+                        Input.KeyDown(Keys.LControlKey);
+                        _coroutineWorker.Resume();
+                    }
+                }
             }
-
-            var uiTabsOpened = GameController.Game.IngameState.IngameUi.InventoryPanel.IsVisible &&
-                               GameController.Game.IngameState.IngameUi.StashElement.IsVisibleLocal;
-
+            return null;
+            /*//not sure if that is even needed
             if (!uiTabsOpened && _coroutineWorker != null && !_coroutineWorker.IsDone)
             {
                 _coroutineWorker = ExileCore.Core.ParallelRunner.FindByName(CoroutineName);
                 _coroutineWorker?.Done();
-            }
-
+            }*/
+            /* //put the error handling responsebility to the error causing codepart
             if (_coroutineWorker != null && _coroutineWorker.Running && _debugTimer.ElapsedMilliseconds > 15000)
             {
                 _coroutineWorker?.Done();
                 _debugTimer.Restart();
                 _debugTimer.Stop();
             }
+            */
+        }
 
-            if (!Settings.Hotkey.PressedOnce()) return;
-            _coroutineWorker = new Coroutine(ChaosRecipe(), this, CoroutineName);
-            ExileCore.Core.ParallelRunner.Run(_coroutineWorker);
+        private bool CheckRequirements()
+        {
+            //ToDo: ideally a check if we even have a full set available for vendoring -> Setting: minimum Sets for vendoring. Only vendor recipes when >=2 e.g. Sets are available
+            var uiTabsOpened = GameController.Game.IngameState.IngameUi.InventoryPanel.IsVisible &&
+                               GameController.Game.IngameState.IngameUi.StashElement.IsVisibleLocal;
+            return (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown) && uiTabsOpened;
+        }
+
+        public override void Render()
+        {
+            //use Render only for actual rendering stuff
+            //otherwise we use Tick()
+            
         }
 
         private IEnumerator ChaosRecipe()
@@ -82,15 +113,15 @@ namespace Recipe
             if (uiTabsOpened)
             {
                 DebugWindow.LogMsg("Getting item from stash", 5, Color.Green);
-                var constant = Settings.TwoSetsAtOnce.Value ? 2 : 1;
-                yield return Delay(5);
-                yield return SwitchToTabAndGrab(Settings.BodyArmor.Value, constant);
-                yield return SwitchToTabAndGrab(Settings.Weapons.Value, 2 * constant);
-                yield return SwitchToTabAndGrab(Settings.Helmets.Value, constant);
-                yield return SwitchToTabAndGrab(Settings.Gloves.Value, constant);
-                yield return SwitchToTabAndGrab(Settings.Boots.Value, constant);
-                yield return SwitchToTabAndGrab(Settings.Rings.Value, 2 * constant);
-                yield return SwitchToTabAndGrab(Settings.Amulets.Value, constant);
+                var twoSets = Settings.TwoSetsAtOnce.Value ? 2 : 1;
+                yield return new WaitTime(5  +Settings.ExtraDelay);   //if i have to check what the delay function even does, the code is not more readable imo
+                yield return SwitchToTabAndGrab(Settings.BodyArmor.Value, twoSets);
+                yield return SwitchToTabAndGrab(Settings.Weapons.Value, 2 * twoSets);
+                yield return SwitchToTabAndGrab(Settings.Helmets.Value, twoSets);
+                yield return SwitchToTabAndGrab(Settings.Gloves.Value, twoSets);
+                yield return SwitchToTabAndGrab(Settings.Boots.Value, twoSets);
+                yield return SwitchToTabAndGrab(Settings.Rings.Value, 2 * twoSets);
+                yield return SwitchToTabAndGrab(Settings.Amulets.Value, twoSets);
             }
             else
             {
@@ -98,7 +129,7 @@ namespace Recipe
                 yield return SellSetToVendor();
             }
 
-            _coroutineWorker = ExileCore.Core.ParallelRunner.FindByName(CoroutineName);
+            _coroutineWorker = Core.ParallelRunner.FindByName(CoroutineName);
             _coroutineWorker?.Done();
             Input.KeyUp(Keys.LControlKey);
             _debugTimer.Restart();

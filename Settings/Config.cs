@@ -3,13 +3,13 @@ using ExileCore.Shared.Interfaces;
 using ExileCore.Shared.Nodes;
 using System.Windows.Forms;
 
-namespace Recipe.Core
+namespace Recipe.Settings
 {
     public class Config : ISettings
     {
         public ToggleNode Enable { get; set; }
-        [Menu("Hotkey")]
-        public HotkeyNode Hotkey { get; set; }
+        [Menu("StartHotkey")]
+        public HotkeyNode StartHotkey { get; set; }
 
 
         [Menu("Body Armor")]
@@ -47,7 +47,7 @@ namespace Recipe.Core
         public Config()
         {
             Enable = new ToggleNode(false);
-            Hotkey = Keys.F5;
+            StartHotkey = Keys.F5;
             TwoSetsAtOnce = new ToggleNode(true);
 
             ExtraDelay = new RangeNode<int>(0, 0, 2000);
