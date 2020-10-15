@@ -168,7 +168,7 @@ namespace Recipe
         private IEnumerator GrabRandomItemFromVisibleStash(int grabCount = 1)
         {
             var visibleStash = GameController.IngameState.IngameUi.StashElement.VisibleStash;
-            var visibleInventoryItems = visibleStash?.VisibleInventoryItems;
+            var visibleInventoryItems = visibleStash?.VisibleInventoryItems.OrderBy(x => GameController.Game.Files.BaseItemTypes.Translate(x.Item.Path).DropLevel).ToList();
             for (var i = 0; i < grabCount; i++)
             {
                 var visibleInventoryItem = visibleInventoryItems?[i];
