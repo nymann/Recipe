@@ -1,9 +1,18 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
+using ExileCore;
+using ExileCore.PoEMemory.Elements.InventoryElements;
 
 namespace Recipe.Model
 {
     public class ChaosRecipe : IRecipe
     {
+        private GameController _gameController;
+        public ChaosRecipe(GameController gameController)
+        {
+            _gameController = gameController;
+        }
+        private List<NormalInventoryItem> _currentSet;
         public IEnumerator Go()
         {
             if (InInventory())
