@@ -39,10 +39,18 @@ namespace Recipe.Model
         {
             throw new System.NotImplementedException();
         }
-        
+        /// <summary>
+        /// Checks if the currently loaded "_currentSet" is present in our inventory and ready to be sold.
+        /// </summary>
+        /// <returns></returns>
         public bool InInventory()
         {
-            throw new System.NotImplementedException();
+            var inventoryItems = _gameController.Game.IngameState.IngameUi.InventoryPanel[ExileCore.Shared.Enums.InventoryIndex.PlayerInventory].VisibleInventoryItems;
+            foreach (var recipeItem in _currentSet)
+            {
+                if (!inventoryItems.Contains(recipeItem)) return false;
+            }
+            return true;
         }
 
         public bool CanFit()
