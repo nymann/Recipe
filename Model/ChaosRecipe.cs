@@ -40,7 +40,7 @@ namespace Recipe.Model
             throw new System.NotImplementedException();
         }
         /// <summary>
-        /// Checks if the currently loaded "_currentSet" is present and ready to be sold in our inventory.
+        /// Checks if the currently loaded "_currentSet" is present in our inventory and ready to be sold.
         /// </summary>
         /// <returns></returns>
         public bool InInventory()
