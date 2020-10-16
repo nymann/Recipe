@@ -1,22 +1,21 @@
-﻿using ExileCore.Shared.Attributes;
+﻿using System.Windows.Forms;
+using ExileCore.Shared.Attributes;
 using ExileCore.Shared.Interfaces;
 using ExileCore.Shared.Nodes;
-using System.Windows.Forms;
 
-namespace Recipe.Core
+namespace Recipe
 {
-    public class Config : ISettings
+    public class Settings: ISettings
     {
         public ToggleNode Enable { get; set; }
-        [Menu("Hotkey")]
-        public HotkeyNode Hotkey { get; set; }
-
+        
+        [Menu("StartHotkey")]
+        public HotkeyNode StartHotkey { get; set; }
 
         [Menu("Body Armor")]
         public RangeNode<int> BodyArmor { get; set; }
 
         [Menu("Weapons")]
-
         public RangeNode<int> Weapons { get; set; }
 
         [Menu("Helmets")]
@@ -27,7 +26,6 @@ namespace Recipe.Core
 
         [Menu("Gloves")]
         public RangeNode<int> Gloves { get; set; }
-        
 
         [Menu("Belts")]
         public RangeNode<int> Belts { get; set; }
@@ -44,10 +42,10 @@ namespace Recipe.Core
 
         [Menu("Extra Delay", "Is it going too fast? Then add a delay (in ms).")]
         public RangeNode<int> ExtraDelay { get; set; }
-        public Config()
+        public Settings()
         {
             Enable = new ToggleNode(false);
-            Hotkey = Keys.F5;
+            StartHotkey = Keys.F5;
             TwoSetsAtOnce = new ToggleNode(true);
 
             ExtraDelay = new RangeNode<int>(0, 0, 2000);
