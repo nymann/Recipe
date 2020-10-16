@@ -21,7 +21,7 @@ namespace Recipe
         public override bool Initialise()
         {
             Settings.StartHotkey.OnValueChanged += () => { Input.RegisterKey(Settings.StartHotkey); };
-            _chaosRecipe = new ChaosRecipe(GameController);
+            _chaosRecipe = new ChaosRecipe(GameController, Settings);
             return true;
         }
 
