@@ -2,3 +2,5 @@
 obj/
 bin/
 Errors.txt
+.idea/
+packages/
