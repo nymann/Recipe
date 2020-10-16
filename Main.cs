@@ -11,7 +11,7 @@ namespace Recipe
         private const string CoroutineName = "Recipe Main Routine";
         private readonly Stopwatch _debugTimer = new Stopwatch();
         private Coroutine _coroutineWorker;
-        private readonly IRecipe _chaosRecipe = new ChaosRecipe();
+        private IRecipe _chaosRecipe;
 
         public Main()
         {
@@ -21,7 +21,7 @@ namespace Recipe
         public override bool Initialise()
         {
             Settings.StartHotkey.OnValueChanged += () => { Input.RegisterKey(Settings.StartHotkey); };
-
+            _chaosRecipe = new ChaosRecipe(GameController);
             return true;
         }
 
