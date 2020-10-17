@@ -56,10 +56,9 @@
     <Compile Include="Model\TabIndexItemType.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Main.cs" />
+    <Compile Include="Controller.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Controller\" />
     <Folder Include="Model\" />
     <Folder Include="View\" />
   </ItemGroup>
