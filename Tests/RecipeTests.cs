@@ -44,25 +44,25 @@ namespace Tests
                     item = new NormalInventoryItem(3, 1);
                     break;
                 case ItemType.BodyArmour:
-                    item = new NormalInventoryItem(3, 1);
+                    item = new NormalInventoryItem(3, 2);
                     break;
                 case ItemType.Helmet:
-                    item = new NormalInventoryItem(3, 1);
+                    item = new NormalInventoryItem(2, 2);
                     break;
                 case ItemType.Gloves:
-                    item = new NormalInventoryItem(3, 1);
+                    item = new NormalInventoryItem(2, 2);
                     break;
                 case ItemType.Boots:
-                    item = new NormalInventoryItem(3, 1);
+                    item = new NormalInventoryItem(2, 2);
                     break;
                 case ItemType.Belt:
-                    item = new NormalInventoryItem(3, 1);
+                    item = new NormalInventoryItem(1, 2);
                     break;
                 case ItemType.Amulet:
-                    item = new NormalInventoryItem(3, 1);
+                    item = new NormalInventoryItem(1, 1);
                     break;
                 case ItemType.Ring:
-                    item = new NormalInventoryItem(3, 1);
+                    item = new NormalInventoryItem(1, 1);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(itemType),
