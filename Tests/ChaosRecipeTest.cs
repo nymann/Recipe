@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Recipe;
+using Recipe.Controller;
 using Recipe.Model;
 
 namespace Tests

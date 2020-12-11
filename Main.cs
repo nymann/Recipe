@@ -9,18 +9,18 @@ using System.Diagnostics;
 using System.Windows.Forms;
 using ExileCore;
 using ExileCore.Shared;
-using Recipe.Model;
+using Recipe.Controller;
 
 namespace Recipe
 {
-    public class Controller : BaseSettingsPlugin<Settings>
+    public class Main : BaseSettingsPlugin<Settings>
     {
         private const string CoroutineName = "Recipe Main Routine";
         private readonly Stopwatch _debugTimer = new Stopwatch();
         private Coroutine _coroutineWorker;
         private IRecipe _chaosRecipe;
 
-        public Controller()
+        public Main()
         {
             Name = "Recipe";
         }

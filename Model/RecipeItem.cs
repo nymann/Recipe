@@ -1,4 +1,5 @@
-﻿using ExileCore.PoEMemory.Elements.InventoryElements;
+﻿using ExileCore.PoEMemory.Components;
+using ExileCore.PoEMemory.Elements.InventoryElements;
 
 namespace Recipe.Model
 {
@@ -6,6 +7,7 @@ namespace Recipe.Model
     {
         public NormalInventoryItem NormalInventoryItem;
         public ItemType ItemType;
+
         public bool IsLowLevel;
 
         public RecipeItem(ItemType itemType,
